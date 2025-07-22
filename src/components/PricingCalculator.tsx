@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowRight, ArrowLeft, Palette, Video, CheckCircle, Star, Phone, Award, Target, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import logo from '@/assets/8creatives-logo.png';
 
 interface PricingData {
   serviceType: 'graphic' | 'video' | 'both' | '';
@@ -329,8 +328,8 @@ const PricingCalculator: React.FC = () => {
           <CardHeader className="text-center pb-8 bg-creative-dark-green text-white">
             {/* Company Logo */}
             <div className="mb-6">
-              <div className="w-20 h-20 mx-auto flex items-center justify-center">
-                <img src={logo} alt="8Creatives" className="w-full h-full object-contain" />
+              <div className="w-20 h-20 bg-creative-yellow rounded-full mx-auto flex items-center justify-center">
+                <span className="text-creative-dark-green font-black text-2xl">8C</span>
               </div>
             </div>
             
@@ -424,8 +423,8 @@ const PricingCalculator: React.FC = () => {
         <CardHeader className="text-center pb-8 bg-creative-dark-green text-white">
           {/* Company Logo */}
           <div className="mb-6">
-            <div className="w-24 h-24 mx-auto flex items-center justify-center">
-              <img src={logo} alt="8Creatives" className="w-full h-full object-contain" />
+            <div className="w-24 h-24 bg-creative-yellow rounded-full mx-auto flex items-center justify-center">
+              <span className="text-creative-dark-green font-black text-3xl">8C</span>
             </div>
           </div>
           

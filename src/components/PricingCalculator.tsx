@@ -12,7 +12,6 @@ interface PricingData {
   
   // Graphic Design Data
   designPieces: string;
-  designHours: string;
   designTypes: string[];
   customDesignType: string;
   bilingual: boolean;
@@ -44,6 +43,7 @@ interface PricingResult {
     addOns: number;
   };
   includes: string[];
+  estimatedHours: number;
 }
 
 const PricingCalculator: React.FC = () => {
@@ -53,7 +53,6 @@ const PricingCalculator: React.FC = () => {
   const [data, setData] = useState<PricingData>({
     serviceType: '',
     designPieces: '',
-    designHours: '',
     designTypes: [],
     customDesignType: '',
     bilingual: false,
@@ -73,7 +72,7 @@ const PricingCalculator: React.FC = () => {
   
   const { toast } = useToast();
 
-  // Calculate progress based on current step and completion
+  // Calculate progress based on current step
   useEffect(() => {
     const totalSteps = 3;
     const baseProgress = ((currentStep - 1) / totalSteps) * 100;
@@ -97,6 +96,37 @@ const PricingCalculator: React.FC = () => {
     'Other'
   ];
 
+  // Calculate hours needed based on design requirements
+  const calculateDesignHours = (): number => {
+    const designCount = parseInt(data.designPieces.split('–')[1] || data.designPieces.replace('+', '') || '0');
+    let totalHours = 0;
+
+    // Base calculation: 5 social media designs = 2.5 hours
+    const socialMediaDesigns = data.designTypes.includes('Social Media Posts') 
+      ? Math.min(designCount * 0.6, designCount * 0.8) // 60-80% are social media
+      : 0;
+    
+    totalHours += (socialMediaDesigns / 5) * 2.5;
+
+    // Brochures: 6-page design-heavy brochure = 4.5 hours each
+    if (data.designTypes.includes('Brochures / Company Profiles')) {
+      const brochureCount = Math.ceil(designCount * 0.15); // ~15% are brochures
+      totalHours += brochureCount * 4.5;
+    }
+
+    // Creative tasks (Website Graphics, Packaging) take 2x time
+    const creativeTypes = ['Website Graphics', 'Packaging / Labels', 'Banners / Ads'];
+    const hasCreativeTasks = data.designTypes.some(type => creativeTypes.includes(type));
+    
+    if (hasCreativeTasks) {
+      const creativeCount = Math.ceil(designCount * 0.25); // ~25% are creative tasks
+      totalHours += (creativeCount / 5) * 2.5 * 2; // 2x time for creative tasks
+    }
+
+    // Minimum 2.5 hours/day (52.5 hours/month)
+    return Math.max(totalHours, 52.5);
+  };
+
   const calculatePricing = (): PricingResult => {
     let result: PricingResult = {
       monthlyPrice: 0,
@@ -107,110 +137,125 @@ const PricingCalculator: React.FC = () => {
         bilingualBonus: 0,
         addOns: 0
       },
-      includes: []
+      includes: [],
+      estimatedHours: 0
     };
 
     if (data.serviceType === 'both') {
       // Combined package - $959 base (20% discount applied)
       result.breakdown.basePrice = 959;
-      result.includes.push('POWER COMBO: Design + Video Package');
-      result.includes.push('4+ hours combined creative work/day');
-      result.includes.push('Up to 25 designs/month');
-      result.includes.push('Up to 8 videos/month');
+      result.includes.push('Complete Creative Package: Design + Video');
+      result.includes.push('Combined creative services');
       
-      // Volume adjustments for combined package
       const designCount = parseInt(data.designPieces.split('–')[1] || data.designPieces.replace('+', '') || '0');
       const videoCount = parseInt(data.videoCount.split('–')[1] || data.videoCount.replace('+', '') || '0');
       
+      result.includes.push(`Up to ${Math.max(designCount, 25)} designs/month`);
+      result.includes.push(`Up to ${Math.max(videoCount, 8)} videos/month`);
+      
+      // Calculate estimated hours
+      result.estimatedHours = calculateDesignHours() + (videoCount * 0.5); // Basic video hours estimate
+      
+      // Volume adjustments for combined package
       if (designCount > 25) {
-        const volumeIncrease = Math.ceil((designCount - 25) / 10) * 120; // 20% discount
+        const volumeIncrease = Math.ceil((designCount - 25) / 10) * 120;
         result.breakdown.volumeAdjustment += volumeIncrease;
       }
       
       if (videoCount > 8) {
-        const volumeIncrease = Math.ceil((videoCount - 8) / 4) * 160; // 20% discount
+        const volumeIncrease = Math.ceil((videoCount - 8) / 4) * 160;
         result.breakdown.volumeAdjustment += volumeIncrease;
       }
 
       // Premium features
       if (data.editingQuality === 'premium') {
-        result.breakdown.complexityAdjustment += 320; // 20% discount
+        result.breakdown.complexityAdjustment += 320;
         result.includes.push('Premium video editing with motion graphics');
       }
       
       if (data.designTypes.includes('Brochures / Company Profiles')) {
-        result.breakdown.complexityAdjustment += 240; // 20% discount
+        result.breakdown.complexityAdjustment += 240;
         result.includes.push('Complex brochures & company profiles');
       }
       
       if (data.bilingual) {
-        result.breakdown.bilingualBonus += 80; // 20% discount
+        result.breakdown.bilingualBonus += 80;
         result.includes.push('Arabic & English content');
       }
       
       if (data.footageReady === 'need-help') {
-        result.breakdown.addOns += 160; // 20% discount
+        result.breakdown.addOns += 160;
         result.includes.push('Script & footage creation support');
       }
       
       if (data.needCaptions) {
-        result.breakdown.addOns += 40; // 20% discount
+        result.breakdown.addOns += 40;
         result.includes.push('Professional captions/subtitles');
       }
       
       if (data.needStock) {
-        result.breakdown.addOns += 80; // 20% discount
+        result.breakdown.addOns += 80;
         result.includes.push('Stock footage & music library');
       }
       
     } else if (data.serviceType === 'graphic') {
-      // Graphic Design Only - $599 base
-      result.breakdown.basePrice = 599;
-      result.includes.push('Design Domination Package');
-      result.includes.push('3+ hours design work/day');
-      result.includes.push('Up to 30 social-style designs/month');
+      // Graphic Design Only - $499 base
+      result.breakdown.basePrice = 499;
+      result.includes.push('Graphic Design Package');
       
       const pieceCount = parseInt(data.designPieces.split('–')[1] || data.designPieces.replace('+', '') || '0');
+      result.estimatedHours = calculateDesignHours();
+      
+      result.includes.push(`Up to ${pieceCount} designs/month`);
+      result.includes.push(`${Math.ceil(result.estimatedHours / 21)} hours/day average`);
+      
       if (pieceCount > 30) {
-        const volumeIncrease = Math.ceil((pieceCount - 30) / 10) * 150;
+        const volumeIncrease = Math.ceil((pieceCount - 30) / 10) * 100;
         result.breakdown.volumeAdjustment += volumeIncrease;
       }
       
-      if (data.designHours.includes('5+')) {
-        result.breakdown.complexityAdjustment += 300;
-        result.includes.push('Premium 5+ hours/day commitment');
-      }
-      
       if (data.designTypes.includes('Brochures / Company Profiles')) {
-        result.breakdown.complexityAdjustment += 300;
+        result.breakdown.complexityAdjustment += 200;
         result.includes.push('Complex brochures & company profiles');
       }
       
+      // Creative tasks adjustment
+      const creativeTypes = ['Website Graphics', 'Packaging / Labels'];
+      const hasCreativeTasks = data.designTypes.some(type => creativeTypes.includes(type));
+      if (hasCreativeTasks) {
+        result.breakdown.complexityAdjustment += 150;
+        result.includes.push('Creative & branding materials');
+      }
+      
       if (data.bilingual) {
-        result.breakdown.bilingualBonus += 100;
+        result.breakdown.bilingualBonus += 75;
         result.includes.push('Arabic & English designs');
       }
       
     } else if (data.serviceType === 'video') {
-      // Video Editing Only - $799 base
-      result.breakdown.basePrice = 799;
-      result.includes.push('Video Victory Package');
-      result.includes.push('3+ hours editing/day');
-      result.includes.push('Up to 10 videos/month');
+      // Video Editing Only - $699 base
+      result.breakdown.basePrice = 699;
+      result.includes.push('Video Editing Package');
       
       const videoCount = parseInt(data.videoCount.split('–')[1] || data.videoCount.replace('+', '') || '0');
+      result.estimatedHours = videoCount * 0.75; // Base estimate
+      
+      result.includes.push(`Up to ${videoCount} videos/month`);
+      result.includes.push(`${Math.ceil(result.estimatedHours / 21)} hours/day average`);
+      
       if (videoCount > 10) {
-        const volumeIncrease = Math.ceil((videoCount - 10) / 5) * 200;
+        const volumeIncrease = Math.ceil((videoCount - 10) / 5) * 140;
         result.breakdown.volumeAdjustment += volumeIncrease;
       }
       
       if (data.editingQuality === 'premium') {
-        result.breakdown.complexityAdjustment += 400;
+        result.breakdown.complexityAdjustment += 300;
         result.includes.push('Premium editing with motion graphics');
+        result.estimatedHours *= 1.5; // Premium editing takes more time
       }
       
       if (data.footageReady === 'need-help') {
-        result.breakdown.addOns += 200;
+        result.breakdown.addOns += 150;
         result.includes.push('Script & footage creation support');
       }
       
@@ -220,7 +265,7 @@ const PricingCalculator: React.FC = () => {
       }
       
       if (data.needStock) {
-        result.breakdown.addOns += 100;
+        result.breakdown.addOns += 75;
         result.includes.push('Stock footage & music library');
       }
     }
@@ -253,7 +298,7 @@ const PricingCalculator: React.FC = () => {
     if (!data.name || !data.company || !data.email) {
       toast({
         title: "Required Information Missing",
-        description: "Please complete all required fields (Name, Company, Email) to unlock your power estimate.",
+        description: "Please complete all required fields (Name, Company, Email) to view your estimate.",
         variant: "destructive"
       });
       return;
@@ -264,7 +309,7 @@ const PricingCalculator: React.FC = () => {
 
   const canProceedToLead = () => {
     if (data.serviceType === 'graphic' || data.serviceType === 'both') {
-      return data.designPieces && data.designHours && data.designTypes.length > 0;
+      return data.designPieces && data.designTypes.length > 0;
     }
     if (data.serviceType === 'video') {
       return data.videoCount && data.videoDuration && data.videoTypes.length > 0 && data.editingQuality && data.footageReady;
@@ -278,67 +323,75 @@ const PricingCalculator: React.FC = () => {
     const videoCount = parseInt(data.videoCount.split('–')[1] || data.videoCount.replace('+', '') || '0');
     
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6">
-        <Card className="w-full max-w-3xl animate-scale-in border-2 border-creative-dark-green shadow-2xl">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6">
+        <Card className="w-full max-w-4xl animate-scale-in border border-gray-200 shadow-xl">
           <CardHeader className="text-center pb-8 bg-creative-dark-green text-white">
-            <div className="w-20 h-20 bg-creative-yellow rounded-full mx-auto mb-6 flex items-center justify-center animate-pulse">
-              <Award className="h-10 w-10 text-creative-dark-green" />
+            {/* Company Logo */}
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-creative-yellow rounded-full mx-auto flex items-center justify-center">
+                <span className="text-creative-dark-green font-black text-xl">8C</span>
+              </div>
             </div>
+            
             <div className="bg-creative-yellow text-creative-dark-green px-6 py-2 rounded-full inline-block mb-4 font-bold">
-              🎯 Creative IQ Assessment Complete
+              ✨ Your Creative Requirements Assessment
             </div>
-            <CardTitle className="text-3xl font-bold mb-4">
-              {data.name}, Your Creative Power Plan Is Ready
+            <CardTitle className="text-2xl sm:text-3xl font-bold mb-4">
+              {data.name}, Your Custom Plan Is Ready
             </CardTitle>
             <div className="text-creative-yellow text-lg font-semibold">
-              Analysis: You need {designCount > 0 ? `${designCount} designs` : ''} 
+              Based on your needs: {designCount > 0 ? `${designCount} designs` : ''} 
               {designCount > 0 && videoCount > 0 ? ' & ' : ''}
-              {videoCount > 0 ? `${videoCount} videos` : ''}/month
+              {videoCount > 0 ? `${videoCount} videos` : ''} per month
             </div>
           </CardHeader>
           
-          <CardContent className="space-y-8 p-8">
-            <div className="text-center bg-gradient-to-r from-creative-yellow/10 to-creative-green/10 p-8 rounded-2xl">
-              <div className="text-6xl font-black text-creative-dark-green mb-2">
+          <CardContent className="space-y-8 p-6 sm:p-8">
+            <div className="text-center bg-gradient-to-r from-creative-yellow/10 to-creative-green/10 p-6 sm:p-8 rounded-2xl">
+              <div className="text-4xl sm:text-6xl font-black text-creative-dark-green mb-2">
                 ${pricing.monthlyPrice.toLocaleString()}
-                <span className="text-xl text-muted-foreground font-normal">/month</span>
+                <span className="text-lg sm:text-xl text-muted-foreground font-normal">/month</span>
               </div>
-              <p className="text-lg font-semibold text-creative-dark-green">Your Domination Investment</p>
+              <p className="text-lg font-semibold text-creative-dark-green">Your Monthly Investment</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Unlock unlimited creative firepower at a fraction of hiring cost
+                Professional creative services at a fraction of hiring cost
               </p>
             </div>
 
             <div className="bg-creative-dark-green text-white p-6 rounded-2xl">
               <h3 className="font-bold text-xl mb-4 flex items-center">
                 <Target className="mr-3 h-6 w-6 text-creative-yellow" />
-                Your Creative Arsenal Includes:
+                What's Included in Your Plan:
               </h3>
               <div className="grid gap-3">
                 {pricing.includes.map((item, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-creative-yellow flex-shrink-0" />
+                  <div key={index} className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-creative-yellow flex-shrink-0 mt-0.5" />
                     <span className="font-medium">{item}</span>
                   </div>
                 ))}
-                <div className="flex items-center gap-3 mt-2 pt-2 border-t border-creative-yellow/30">
-                  <TrendingUp className="h-5 w-5 text-creative-yellow flex-shrink-0" />
+                <div className="flex items-start gap-3 mt-2 pt-2 border-t border-creative-yellow/30">
+                  <TrendingUp className="h-5 w-5 text-creative-yellow flex-shrink-0 mt-0.5" />
                   <span className="font-medium">Unlimited revisions until you're 100% satisfied</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-creative-yellow flex-shrink-0 mt-0.5" />
+                  <span className="font-medium">Dedicated creative team with 24-48 hour turnaround</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-gray-50 rounded-xl p-6">
-              <div className="text-xs text-gray-500 mb-4 italic">
-                *These are estimated prices based on your requirements. We strongly recommend speaking with our creative strategist team for a detailed review and final proposal tailored to your specific needs.
+              <div className="text-xs text-gray-600 mb-4 italic">
+                *These are estimated prices based on your requirements. We strongly recommend speaking with our team for a detailed review and final proposal tailored to your specific needs.
               </div>
               
               <div className="text-center bg-white p-6 rounded-xl border-2 border-creative-yellow">
                 <h4 className="font-bold text-xl text-creative-dark-green mb-2">
-                  Ready to Dominate Your Market?
+                  Ready to Get Started?
                 </h4>
                 <p className="text-muted-foreground mb-6">
-                  Get a creative strategist to review your estimate and unlock exclusive bonuses
+                  Get a creative strategist to review your estimate and customize your plan
                 </p>
                 
                 <div className="space-y-4">
@@ -346,14 +399,14 @@ const PricingCalculator: React.FC = () => {
                     variant="creative" 
                     size="lg" 
                     className="w-full text-lg font-bold py-6"
-                    onClick={() => window.open('https://calendly.com/8creatives', '_blank')}
+                    onClick={() => window.open('https://8creatives.zohobookings.com/#/8creatives', '_blank')}
                   >
                     <Phone className="mr-3 h-6 w-6" />
-                    Claim Your Strategy Session (FREE)
+                    Book Your Strategy Call (Free)
                   </Button>
                   
                   <p className="text-xs text-gray-500">
-                    💡 Bonus: First 10 callers get a FREE brand audit ($500 value)
+                    💡 Free consultation with our creative strategist to refine your plan
                   </p>
                 </div>
               </div>
@@ -365,20 +418,27 @@ const PricingCalculator: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-6">
-      <Card className="w-full max-w-4xl animate-fade-in border-2 border-creative-dark-green shadow-2xl">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6">
+      <Card className="w-full max-w-4xl animate-fade-in border border-gray-200 shadow-xl">
         <CardHeader className="text-center pb-8 bg-creative-dark-green text-white">
-          <CardTitle className="text-4xl font-black mb-4">
-            Stop Paying Premium Prices for Average Creative
+          {/* Company Logo */}
+          <div className="mb-6">
+            <div className="w-20 h-20 bg-creative-yellow rounded-full mx-auto flex items-center justify-center">
+              <span className="text-creative-dark-green font-black text-2xl">8C</span>
+            </div>
+          </div>
+          
+          <CardTitle className="text-3xl sm:text-4xl font-black mb-4">
+            Calculate Your Creative Plan
           </CardTitle>
-          <p className="text-xl text-creative-yellow max-w-3xl mx-auto font-semibold">
-            Calculate your custom creative domination plan. Get unlimited designs & videos for less than one freelancer.
+          <p className="text-lg sm:text-xl text-creative-yellow max-w-3xl mx-auto font-semibold">
+            Get unlimited designs & videos for less than hiring one designer
           </p>
           
           {/* Progress Bar */}
           <div className="mt-8 max-w-md mx-auto">
             <div className="flex justify-between text-sm mb-2 text-creative-yellow">
-              <span>Creative Power Assessment</span>
+              <span>Requirements Assessment</span>
               <span>{Math.round(progress)}% Complete</span>
             </div>
             <div className="w-full bg-creative-green/30 rounded-full h-3">
@@ -387,49 +447,34 @@ const PricingCalculator: React.FC = () => {
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
-            <div className="flex justify-center mt-4">
-              <div className="flex space-x-3">
-                {[1, 2, 3].map((step) => (
-                  <div 
-                    key={step}
-                    className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                      step <= currentStep ? 'bg-creative-yellow' : 'bg-creative-green/40'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
           </div>
         </CardHeader>
 
-        <CardContent className="p-8">
+        <CardContent className="p-6 sm:p-8">
           {currentStep === 1 && (
             <div className="space-y-8 animate-fade-in">
               <div className="text-center">
-                <h2 className="text-3xl font-bold text-creative-dark-green mb-6">
-                  Which creative weapon will dominate your market?
+                <h2 className="text-2xl sm:text-3xl font-bold text-creative-dark-green mb-6">
+                  What creative services do you need?
                 </h2>
                 <p className="text-lg text-muted-foreground">
-                  Choose your path to creative domination. Each option unlocks massive value.
+                  Choose the option that best fits your business needs
                 </p>
               </div>
               
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid sm:grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card 
                   className="cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 border-2 hover:border-creative-yellow bg-white"
                   onClick={() => handleServiceSelect('graphic')}
                 >
-                  <CardContent className="p-8 text-center relative">
-                    <div className="absolute top-4 right-4 text-creative-green text-sm font-semibold">
-                      $599/mo
-                    </div>
-                    <Palette className="h-16 w-16 text-creative-green mx-auto mb-6" />
-                    <h3 className="font-bold text-xl text-creative-dark-green mb-3">Design Domination</h3>
+                  <CardContent className="p-6 sm:p-8 text-center">
+                    <Palette className="h-12 sm:h-16 w-12 sm:w-16 text-creative-green mx-auto mb-6" />
+                    <h3 className="font-bold text-xl text-creative-dark-green mb-3">Graphic Design</h3>
                     <p className="text-muted-foreground text-sm mb-4">
-                      Unlimited graphics that convert viewers into customers
+                      Unlimited graphics for all your marketing needs
                     </p>
                     <div className="text-xs text-creative-green font-semibold">
-                      • Social Media Posts • Website Graphics • Branding Materials
+                      Social Media • Website Graphics • Branding
                     </div>
                   </CardContent>
                 </Card>
@@ -438,17 +483,14 @@ const PricingCalculator: React.FC = () => {
                   className="cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 border-2 hover:border-creative-yellow bg-white"
                   onClick={() => handleServiceSelect('video')}
                 >
-                  <CardContent className="p-8 text-center relative">
-                    <div className="absolute top-4 right-4 text-creative-green text-sm font-semibold">
-                      $799/mo
-                    </div>
-                    <Video className="h-16 w-16 text-creative-green mx-auto mb-6" />
-                    <h3 className="font-bold text-xl text-creative-dark-green mb-3">Video Victory</h3>
+                  <CardContent className="p-6 sm:p-8 text-center">
+                    <Video className="h-12 sm:h-16 w-12 sm:w-16 text-creative-green mx-auto mb-6" />
+                    <h3 className="font-bold text-xl text-creative-dark-green mb-3">Video Editing</h3>
                     <p className="text-muted-foreground text-sm mb-4">
-                      Viral-ready videos that command attention and drive action
+                      Professional video editing for all platforms
                     </p>
                     <div className="text-xs text-creative-green font-semibold">
-                      • Reels & TikToks • YouTube Videos • Video Ads
+                      Reels • YouTube • Video Ads • Explainers
                     </div>
                   </CardContent>
                 </Card>
@@ -457,24 +499,20 @@ const PricingCalculator: React.FC = () => {
                   className="cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 border-3 border-creative-yellow bg-gradient-to-br from-creative-yellow/10 to-white relative"
                   onClick={() => handleServiceSelect('both')}
                 >
-                  <div className="absolute -top-4 -right-4 bg-creative-yellow text-creative-dark-green px-4 py-2 rounded-full text-sm font-black animate-pulse">
-                    20% OFF!
+                  <div className="absolute -top-4 -right-4 bg-creative-yellow text-creative-dark-green px-4 py-2 rounded-full text-sm font-black">
+                    SAVE 20%
                   </div>
-                  <CardContent className="p-8 text-center">
-                    <div className="text-creative-green text-lg font-bold mb-2">
-                      $959/mo
-                      <span className="text-sm line-through text-gray-400 ml-2">$1,198</span>
-                    </div>
+                  <CardContent className="p-6 sm:p-8 text-center">
                     <div className="flex justify-center space-x-3 mb-6">
-                      <Palette className="h-12 w-12 text-creative-green" />
-                      <Video className="h-12 w-12 text-creative-green" />
+                      <Palette className="h-10 sm:h-12 w-10 sm:w-12 text-creative-green" />
+                      <Video className="h-10 sm:h-12 w-10 sm:w-12 text-creative-green" />
                     </div>
-                    <h3 className="font-bold text-xl text-creative-dark-green mb-3">POWER COMBO</h3>
+                    <h3 className="font-bold text-xl text-creative-dark-green mb-3">Complete Package</h3>
                     <p className="text-muted-foreground text-sm mb-4">
-                      Complete creative arsenal - design + video domination
+                      Full creative services - design + video
                     </p>
                     <div className="text-xs text-creative-green font-semibold">
-                      Save $239/month • Maximum Market Impact
+                      Everything included • Best value
                     </div>
                   </CardContent>
                 </Card>
@@ -485,19 +523,19 @@ const PricingCalculator: React.FC = () => {
           {currentStep === 2 && (data.serviceType === 'graphic' || data.serviceType === 'both') && (
             <div className="space-y-8 animate-slide-in">
               <div className="text-center">
-                <h2 className="text-3xl font-bold text-creative-dark-green mb-6">
-                  Size Your Design Empire
+                <h2 className="text-2xl sm:text-3xl font-bold text-creative-dark-green mb-6">
+                  Tell us about your design needs
                 </h2>
                 <p className="text-lg text-muted-foreground">
-                  The more you dominate, the better value you get. Scale like a champion.
+                  Help us understand your requirements so we can provide an accurate estimate
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-8">
+              <div className="grid lg:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   <div>
-                    <Label className="text-xl font-bold text-creative-dark-green mb-6 block">
-                      How many designs will fuel your domination?
+                    <Label className="text-lg font-bold text-creative-dark-green mb-6 block">
+                      How many designs do you need per month?
                     </Label>
                     <div className="grid grid-cols-2 gap-4">
                       {['5–10', '11–20', '21–30', '30+'].map((option) => (
@@ -505,35 +543,9 @@ const PricingCalculator: React.FC = () => {
                           key={option}
                           variant={data.designPieces === option ? 'creative' : 'creative-outline'}
                           onClick={() => setData({ ...data, designPieces: option })}
-                          className="justify-center h-16 text-lg font-bold"
+                          className="justify-center h-14 text-base font-semibold"
                         >
                           {option}
-                          <div className="text-xs opacity-70 mt-1">per month</div>
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-xl font-bold text-creative-dark-green mb-6 block">
-                      Design intensity level?
-                    </Label>
-                    <div className="space-y-4">
-                      {[
-                        { value: '2.5', label: 'Standard Power', desc: '2.5 hours/day commitment' },
-                        { value: '3–4', label: 'High Impact', desc: '3-4 hours/day domination' },
-                        { value: '5+', label: 'Maximum Force', desc: '5+ hours/day takeover' }
-                      ].map((option) => (
-                        <Button
-                          key={option.value}
-                          variant={data.designHours === option.value ? 'creative' : 'creative-outline'}
-                          onClick={() => setData({ ...data, designHours: option.value })}
-                          className="w-full justify-start h-auto p-4 text-left"
-                        >
-                          <div>
-                            <div className="font-bold text-lg">{option.label}</div>
-                            <div className="text-sm opacity-70">{option.desc}</div>
-                          </div>
                         </Button>
                       ))}
                     </div>
@@ -542,8 +554,8 @@ const PricingCalculator: React.FC = () => {
 
                 <div className="space-y-8">
                   <div>
-                    <Label className="text-xl font-bold text-creative-dark-green mb-6 block">
-                      Your creative weapons of choice?
+                    <Label className="text-lg font-bold text-creative-dark-green mb-6 block">
+                      What types of designs do you need?
                     </Label>
                     <div className="space-y-4">
                       {designTypeOptions.map((option) => (
@@ -556,17 +568,17 @@ const PricingCalculator: React.FC = () => {
                             onCheckedChange={() => handleDesignTypeToggle(option)}
                             className="w-5 h-5"
                           />
-                          <span className="font-semibold text-lg">{option}</span>
+                          <span className="font-semibold">{option}</span>
                         </label>
                       ))}
                     </div>
                     
                     {data.designTypes.includes('Other') && (
                       <Input
-                        placeholder="Describe your secret design weapon..."
+                        placeholder="Please specify..."
                         value={data.customDesignType}
                         onChange={(e) => setData({ ...data, customDesignType: e.target.value })}
-                        className="mt-4 h-12 text-lg"
+                        className="mt-4 h-12"
                       />
                     )}
                   </div>
@@ -580,10 +592,10 @@ const PricingCalculator: React.FC = () => {
                       />
                       <div>
                         <Label className="font-bold text-lg text-creative-dark-green cursor-pointer">
-                          Bilingual Market Domination?
+                          Need Arabic & English versions?
                         </Label>
                         <p className="text-muted-foreground">
-                          Arabic + English = 2x market penetration power
+                          Bilingual content for wider market reach
                         </p>
                       </div>
                     </div>
@@ -591,10 +603,11 @@ const PricingCalculator: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-between pt-6">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6">
                 <Button 
                   variant="creative-outline" 
                   onClick={() => setCurrentStep(1)}
+                  className="flex-1 sm:flex-initial"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
@@ -603,6 +616,7 @@ const PricingCalculator: React.FC = () => {
                   variant="creative"
                   onClick={() => setCurrentStep(3)}
                   disabled={!canProceedToLead()}
+                  className="flex-1 sm:flex-initial"
                 >
                   Continue
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -614,15 +628,18 @@ const PricingCalculator: React.FC = () => {
           {currentStep === 2 && data.serviceType === 'video' && (
             <div className="space-y-8 animate-slide-in">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-creative-dark-green mb-4">
-                  Tell us about your video editing needs
+                <h2 className="text-2xl sm:text-3xl font-bold text-creative-dark-green mb-6">
+                  Tell us about your video needs
                 </h2>
+                <p className="text-lg text-muted-foreground">
+                  Help us understand your video requirements
+                </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-8">
+              <div className="grid lg:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   <div>
-                    <Label className="text-base font-semibold text-creative-dark-green mb-4 block">
+                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
                       How many videos do you need per month?
                     </Label>
                     <div className="grid grid-cols-2 gap-3">
@@ -631,6 +648,7 @@ const PricingCalculator: React.FC = () => {
                           key={option}
                           variant={data.videoCount === option ? 'creative' : 'creative-outline'}
                           onClick={() => setData({ ...data, videoCount: option })}
+                          className="h-12"
                         >
                           {option}
                         </Button>
@@ -639,7 +657,7 @@ const PricingCalculator: React.FC = () => {
                   </div>
 
                   <div>
-                    <Label className="text-base font-semibold text-creative-dark-green mb-4 block">
+                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
                       Average video duration?
                     </Label>
                     <div className="space-y-3">
@@ -648,7 +666,7 @@ const PricingCalculator: React.FC = () => {
                           key={option}
                           variant={data.videoDuration === option ? 'creative' : 'creative-outline'}
                           onClick={() => setData({ ...data, videoDuration: option })}
-                          className="w-full justify-start"
+                          className="w-full justify-start h-12"
                         >
                           {option}
                         </Button>
@@ -657,28 +675,28 @@ const PricingCalculator: React.FC = () => {
                   </div>
 
                   <div>
-                    <Label className="text-base font-semibold text-creative-dark-green mb-4 block">
+                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
                       What editing quality do you expect?
                     </Label>
                     <div className="space-y-3">
                       <Button
                         variant={data.editingQuality === 'basic' ? 'creative' : 'creative-outline'}
                         onClick={() => setData({ ...data, editingQuality: 'basic' })}
-                        className="w-full justify-start text-left"
+                        className="w-full justify-start text-left h-auto p-4"
                       >
                         <div>
-                          <div className="font-semibold">Basic</div>
-                          <div className="text-xs opacity-70">Subtitles, light cuts, minor SFX</div>
+                          <div className="font-semibold">Basic Editing</div>
+                          <div className="text-xs opacity-70">Subtitles, light cuts, minor effects</div>
                         </div>
                       </Button>
                       <Button
                         variant={data.editingQuality === 'premium' ? 'creative' : 'creative-outline'}
                         onClick={() => setData({ ...data, editingQuality: 'premium' })}
-                        className="w-full justify-start text-left"
+                        className="w-full justify-start text-left h-auto p-4"
                       >
                         <div>
-                          <div className="font-semibold">Premium</div>
-                          <div className="text-xs opacity-70">Motion graphics, sound design, branded animation</div>
+                          <div className="font-semibold">Premium Editing</div>
+                          <div className="text-xs opacity-70">Motion graphics, sound design, branded animations</div>
                         </div>
                       </Button>
                     </div>
@@ -687,18 +705,18 @@ const PricingCalculator: React.FC = () => {
 
                 <div className="space-y-6">
                   <div>
-                    <Label className="text-base font-semibold text-creative-dark-green mb-4 block">
+                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
                       What type of video content? (Select all that apply)
                     </Label>
                     <div className="space-y-3">
                       {videoTypeOptions.map((option) => (
-                        <div key={option} className="flex items-center space-x-3">
+                        <div key={option} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50">
                           <Checkbox
                             id={option}
                             checked={data.videoTypes.includes(option)}
                             onCheckedChange={() => handleVideoTypeToggle(option)}
                           />
-                          <Label htmlFor={option} className="flex-1 cursor-pointer">
+                          <Label htmlFor={option} className="flex-1 cursor-pointer font-medium">
                             {option}
                           </Label>
                         </div>
@@ -716,8 +734,8 @@ const PricingCalculator: React.FC = () => {
                   </div>
 
                   <div>
-                    <Label className="text-base font-semibold text-creative-dark-green mb-4 block">
-                      Do you have footage/script ready or need help?
+                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
+                      Do you have footage/script ready?
                     </Label>
                     <div className="space-y-3">
                       <Button
@@ -725,14 +743,14 @@ const PricingCalculator: React.FC = () => {
                         onClick={() => setData({ ...data, footageReady: 'ready' })}
                         className="w-full justify-start"
                       >
-                        I have it ready
+                        I have everything ready
                       </Button>
                       <Button
                         variant={data.footageReady === 'need-help' ? 'creative' : 'creative-outline'}
                         onClick={() => setData({ ...data, footageReady: 'need-help' })}
                         className="w-full justify-start"
                       >
-                        I need help creating it
+                        I need help creating content
                       </Button>
                     </div>
                   </div>
@@ -745,7 +763,7 @@ const PricingCalculator: React.FC = () => {
                         onCheckedChange={(checked) => setData({ ...data, needCaptions: checked as boolean })}
                       />
                       <Label htmlFor="captions" className="cursor-pointer">
-                        Do you need captions/subtitles?
+                        Need captions/subtitles?
                       </Label>
                     </div>
                     
@@ -756,17 +774,18 @@ const PricingCalculator: React.FC = () => {
                         onCheckedChange={(checked) => setData({ ...data, needStock: checked as boolean })}
                       />
                       <Label htmlFor="stock" className="cursor-pointer">
-                        Do you need stock footage or music included?
+                        Need stock footage or music?
                       </Label>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-between pt-6">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6">
                 <Button 
                   variant="creative-outline" 
                   onClick={() => setCurrentStep(1)}
+                  className="flex-1 sm:flex-initial"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
@@ -775,6 +794,7 @@ const PricingCalculator: React.FC = () => {
                   variant="creative"
                   onClick={() => setCurrentStep(3)}
                   disabled={!canProceedToLead()}
+                  className="flex-1 sm:flex-initial"
                 >
                   Continue
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -785,17 +805,17 @@ const PricingCalculator: React.FC = () => {
 
           {currentStep === 3 && (
             <div className="space-y-8 animate-slide-in">
-              <div className="text-center mb-8 bg-creative-dark-green text-white p-8 rounded-2xl">
-                <h2 className="text-3xl font-bold mb-4">
-                  🔥 Your Power Estimate is 99% Ready
+              <div className="text-center mb-8 bg-creative-dark-green text-white p-6 sm:p-8 rounded-2xl">
+                <h2 className="text-2xl sm:text-3xl font-bold mb-4">
+                  Almost there! Let's get your estimate
                 </h2>
                 <p className="text-creative-yellow text-lg">
-                  Unlock your custom creative domination plan in the next 30 seconds
+                  Enter your details to receive your customized plan
                 </p>
               </div>
 
               <form onSubmit={handleLeadCapture} className="space-y-8">
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid sm:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="name" className="text-lg font-bold text-creative-dark-green">Full Name *</Label>
                     <Input
@@ -804,7 +824,7 @@ const PricingCalculator: React.FC = () => {
                       value={data.name}
                       onChange={(e) => setData({ ...data, name: e.target.value })}
                       className="mt-3 h-12 text-lg border-2 border-creative-dark-green"
-                      placeholder="Your name"
+                      placeholder="Your full name"
                       required
                     />
                   </div>
@@ -817,7 +837,7 @@ const PricingCalculator: React.FC = () => {
                       value={data.company}
                       onChange={(e) => setData({ ...data, company: e.target.value })}
                       className="mt-3 h-12 text-lg border-2 border-creative-dark-green"
-                      placeholder="Your company"
+                      placeholder="Your company name"
                       required
                     />
                   </div>
@@ -853,7 +873,7 @@ const PricingCalculator: React.FC = () => {
                     type="button"
                     variant="creative-outline" 
                     onClick={() => setCurrentStep(2)}
-                    className="flex-1"
+                    className="flex-1 sm:flex-initial"
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -862,15 +882,15 @@ const PricingCalculator: React.FC = () => {
                     type="submit"
                     variant="creative"
                     size="lg"
-                    className="flex-2 h-16 text-xl font-black"
+                    className="flex-1 h-14 text-xl font-bold"
                   >
-                    🚀 UNLOCK MY CREATIVE POWER PLAN
+                    Get My Custom Estimate
                     <ArrowRight className="ml-3 h-6 w-6" />
                   </Button>
                 </div>
                 
                 <p className="text-center text-sm text-gray-500">
-                  💡 Get instant access to your personalized creative strategy + exclusive bonuses
+                  Get instant access to your personalized creative plan
                 </p>
               </form>
             </div>

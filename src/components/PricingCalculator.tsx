@@ -308,11 +308,16 @@ const PricingCalculator: React.FC = () => {
   };
 
   const canProceedToLead = () => {
-    if (data.serviceType === 'graphic' || data.serviceType === 'both') {
+    if (data.serviceType === 'graphic') {
       return data.designPieces && data.designTypes.length > 0;
     }
     if (data.serviceType === 'video') {
       return data.videoCount && data.videoDuration && data.videoTypes.length > 0 && data.editingQuality && data.footageReady;
+    }
+    if (data.serviceType === 'both') {
+      const designRequirements = data.designPieces && data.designTypes.length > 0;
+      const videoRequirements = data.videoCount && data.videoDuration && data.videoTypes.length > 0 && data.editingQuality && data.footageReady;
+      return designRequirements && videoRequirements;
     }
     return false;
   };
@@ -520,266 +525,257 @@ const PricingCalculator: React.FC = () => {
             </div>
           )}
 
-          {currentStep === 2 && (data.serviceType === 'graphic' || data.serviceType === 'both') && (
+          {currentStep === 2 && (
             <div className="space-y-8 animate-slide-in">
               <div className="text-center">
                 <h2 className="text-2xl sm:text-3xl font-bold text-creative-dark-green mb-6">
-                  Tell us about your design needs
+                  {data.serviceType === 'graphic' ? 'Tell us about your design needs' : 
+                   data.serviceType === 'video' ? 'Tell us about your video needs' : 
+                   'Tell us about your creative needs'}
                 </h2>
                 <p className="text-lg text-muted-foreground">
-                  Help us understand your requirements so we can provide an accurate estimate
+                  {data.serviceType === 'graphic' ? 'Help us understand your requirements so we can provide an accurate estimate' :
+                   data.serviceType === 'video' ? 'Help us understand your video requirements' :
+                   'Help us understand both your design and video requirements'}
                 </p>
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <div>
-                    <Label className="text-lg font-bold text-creative-dark-green mb-6 block">
-                      How many designs do you need per month?
-                    </Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      {['5–10', '11–20', '21–30', '30+'].map((option) => (
-                        <Button
-                          key={option}
-                          variant={data.designPieces === option ? 'creative' : 'creative-outline'}
-                          onClick={() => setData({ ...data, designPieces: option })}
-                          className="justify-center h-14 text-base font-semibold"
-                        >
-                          {option}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+              {/* Graphic Design Section */}
+              {(data.serviceType === 'graphic' || data.serviceType === 'both') && (
+                <div className="bg-creative-green/10 p-6 rounded-xl border border-creative-green/20">
+                  <h3 className="text-xl font-bold mb-4 text-creative-dark-green flex items-center">
+                    <Palette className="mr-3 h-6 w-6 text-creative-green" />
+                    Graphic Design Requirements
+                  </h3>
 
-                <div className="space-y-8">
-                  <div>
-                    <Label className="text-lg font-bold text-creative-dark-green mb-6 block">
-                      What types of designs do you need?
-                    </Label>
-                    <div className="space-y-4">
-                      {designTypeOptions.map((option) => (
-                        <label
-                          key={option}
-                          className="flex items-center space-x-4 cursor-pointer p-4 rounded-xl border-2 hover:border-creative-yellow hover:bg-creative-yellow/10 transition-all duration-200"
-                        >
-                          <Checkbox
-                            checked={data.designTypes.includes(option)}
-                            onCheckedChange={() => handleDesignTypeToggle(option)}
-                            className="w-5 h-5"
-                          />
-                          <span className="font-semibold">{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                    
-                    {data.designTypes.includes('Other') && (
-                      <Input
-                        placeholder="Please specify..."
-                        value={data.customDesignType}
-                        onChange={(e) => setData({ ...data, customDesignType: e.target.value })}
-                        className="mt-4 h-12"
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center space-x-4 p-6 border-2 rounded-xl hover:border-creative-yellow hover:bg-creative-yellow/10 transition-all cursor-pointer">
-                      <Checkbox
-                        checked={data.bilingual}
-                        onCheckedChange={(checked) => setData({ ...data, bilingual: !!checked })}
-                        className="w-6 h-6"
-                      />
+                  <div className="grid lg:grid-cols-2 gap-8">
+                    <div className="space-y-6">
                       <div>
-                        <Label className="font-bold text-lg text-creative-dark-green cursor-pointer">
-                          Need Arabic & English versions?
+                        <Label className="text-lg font-bold text-creative-dark-green mb-6 block">
+                          How many designs do you need per month?
                         </Label>
-                        <p className="text-muted-foreground">
-                          Bilingual content for wider market reach
-                        </p>
+                        <div className="grid grid-cols-2 gap-4">
+                          {['5–10', '11–20', '21–30', '30+'].map((option) => (
+                            <Button
+                              key={option}
+                              variant={data.designPieces === option ? 'creative' : 'creative-outline'}
+                              onClick={() => setData({ ...data, designPieces: option })}
+                              className="justify-center h-14 text-base font-semibold"
+                            >
+                              {option}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-8">
+                      <div>
+                        <Label className="text-lg font-bold text-creative-dark-green mb-6 block">
+                          What types of designs do you need?
+                        </Label>
+                        <div className="space-y-4">
+                          {designTypeOptions.map((option) => (
+                            <label
+                              key={option}
+                              className="flex items-center space-x-4 cursor-pointer p-4 rounded-xl border-2 hover:border-creative-yellow hover:bg-creative-yellow/10 transition-all duration-200"
+                            >
+                              <Checkbox
+                                checked={data.designTypes.includes(option)}
+                                onCheckedChange={() => handleDesignTypeToggle(option)}
+                                className="w-5 h-5"
+                              />
+                              <span className="font-semibold">{option}</span>
+                            </label>
+                          ))}
+                        </div>
+                        
+                        {data.designTypes.includes('Other') && (
+                          <Input
+                            placeholder="Please specify..."
+                            value={data.customDesignType}
+                            onChange={(e) => setData({ ...data, customDesignType: e.target.value })}
+                            className="mt-4 h-12"
+                          />
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center space-x-4 p-6 border-2 rounded-xl hover:border-creative-yellow hover:bg-creative-yellow/10 transition-all cursor-pointer">
+                          <Checkbox
+                            checked={data.bilingual}
+                            onCheckedChange={(checked) => setData({ ...data, bilingual: !!checked })}
+                            className="w-6 h-6"
+                          />
+                          <div>
+                            <Label className="font-bold text-lg text-creative-dark-green cursor-pointer">
+                              Need Arabic & English versions?
+                            </Label>
+                            <p className="text-muted-foreground">
+                              Bilingual content for wider market reach
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6">
-                <Button 
-                  variant="creative-outline" 
-                  onClick={() => setCurrentStep(1)}
-                  className="flex-1 sm:flex-initial"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button 
-                  variant="creative"
-                  onClick={() => setCurrentStep(3)}
-                  disabled={!canProceedToLead()}
-                  className="flex-1 sm:flex-initial"
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
+              {/* Video Editing Section */}
+              {(data.serviceType === 'video' || data.serviceType === 'both') && (
+                <div className="bg-creative-green/10 p-6 rounded-xl border border-creative-green/20">
+                  <h3 className="text-xl font-bold mb-4 text-creative-dark-green flex items-center">
+                    <Video className="mr-3 h-6 w-6 text-creative-green" />
+                    Video Editing Requirements
+                  </h3>
 
-          {currentStep === 2 && data.serviceType === 'video' && (
-            <div className="space-y-8 animate-slide-in">
-              <div className="text-center">
-                <h2 className="text-2xl sm:text-3xl font-bold text-creative-dark-green mb-6">
-                  Tell us about your video needs
-                </h2>
-                <p className="text-lg text-muted-foreground">
-                  Help us understand your video requirements
-                </p>
-              </div>
-
-              <div className="grid lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <div>
-                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                      How many videos do you need per month?
-                    </Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['1–4', '5–8', '9–12', '13+'].map((option) => (
-                        <Button
-                          key={option}
-                          variant={data.videoCount === option ? 'creative' : 'creative-outline'}
-                          onClick={() => setData({ ...data, videoCount: option })}
-                          className="h-12"
-                        >
-                          {option}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                      Average video duration?
-                    </Label>
-                    <div className="space-y-3">
-                      {['< 60 sec', '1–3 mins', '3–5 mins', '5+ mins'].map((option) => (
-                        <Button
-                          key={option}
-                          variant={data.videoDuration === option ? 'creative' : 'creative-outline'}
-                          onClick={() => setData({ ...data, videoDuration: option })}
-                          className="w-full justify-start h-12"
-                        >
-                          {option}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                      What editing quality do you expect?
-                    </Label>
-                    <div className="space-y-3">
-                      <Button
-                        variant={data.editingQuality === 'basic' ? 'creative' : 'creative-outline'}
-                        onClick={() => setData({ ...data, editingQuality: 'basic' })}
-                        className="w-full justify-start text-left h-auto p-4"
-                      >
-                        <div>
-                          <div className="font-semibold">Basic Editing</div>
-                          <div className="text-xs opacity-70">Subtitles, light cuts, minor effects</div>
+                  <div className="grid lg:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div>
+                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
+                          How many videos do you need per month?
+                        </Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {['1–4', '5–8', '9–12', '13+'].map((option) => (
+                            <Button
+                              key={option}
+                              variant={data.videoCount === option ? 'creative' : 'creative-outline'}
+                              onClick={() => setData({ ...data, videoCount: option })}
+                              className="h-12"
+                            >
+                              {option}
+                            </Button>
+                          ))}
                         </div>
-                      </Button>
-                      <Button
-                        variant={data.editingQuality === 'premium' ? 'creative' : 'creative-outline'}
-                        onClick={() => setData({ ...data, editingQuality: 'premium' })}
-                        className="w-full justify-start text-left h-auto p-4"
-                      >
-                        <div>
-                          <div className="font-semibold">Premium Editing</div>
-                          <div className="text-xs opacity-70">Motion graphics, sound design, branded animations</div>
-                        </div>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                      </div>
 
-                <div className="space-y-6">
-                  <div>
-                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                      What type of video content? (Select all that apply)
-                    </Label>
-                    <div className="space-y-3">
-                      {videoTypeOptions.map((option) => (
-                        <div key={option} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50">
-                          <Checkbox
-                            id={option}
-                            checked={data.videoTypes.includes(option)}
-                            onCheckedChange={() => handleVideoTypeToggle(option)}
+                      <div>
+                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
+                          Average video duration?
+                        </Label>
+                        <div className="space-y-3">
+                          {['< 60 sec', '1–3 mins', '3–5 mins', '5+ mins'].map((option) => (
+                            <Button
+                              key={option}
+                              variant={data.videoDuration === option ? 'creative' : 'creative-outline'}
+                              onClick={() => setData({ ...data, videoDuration: option })}
+                              className="w-full justify-start h-12"
+                            >
+                              {option}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
+                          What editing quality do you expect?
+                        </Label>
+                        <div className="space-y-3">
+                          <Button
+                            variant={data.editingQuality === 'basic' ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, editingQuality: 'basic' })}
+                            className="w-full justify-start text-left h-auto p-4"
+                          >
+                            <div>
+                              <div className="font-semibold">Basic Editing</div>
+                              <div className="text-xs opacity-70">Subtitles, light cuts, minor effects</div>
+                            </div>
+                          </Button>
+                          <Button
+                            variant={data.editingQuality === 'premium' ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, editingQuality: 'premium' })}
+                            className="w-full justify-start text-left h-auto p-4"
+                          >
+                            <div>
+                              <div className="font-semibold">Premium Editing</div>
+                              <div className="text-xs opacity-70">Motion graphics, sound design, branded animations</div>
+                            </div>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div>
+                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
+                          What type of video content? (Select all that apply)
+                        </Label>
+                        <div className="space-y-3">
+                          {videoTypeOptions.map((option) => (
+                            <div key={option} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50">
+                              <Checkbox
+                                id={option}
+                                checked={data.videoTypes.includes(option)}
+                                onCheckedChange={() => handleVideoTypeToggle(option)}
+                              />
+                              <Label htmlFor={option} className="flex-1 cursor-pointer font-medium">
+                                {option}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {data.videoTypes.includes('Other') && (
+                          <Input
+                            placeholder="Please specify..."
+                            value={data.customVideoType}
+                            onChange={(e) => setData({ ...data, customVideoType: e.target.value })}
+                            className="mt-3"
                           />
-                          <Label htmlFor={option} className="flex-1 cursor-pointer font-medium">
-                            {option}
+                        )}
+                      </div>
+
+                      <div>
+                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
+                          Do you have footage/script ready?
+                        </Label>
+                        <div className="space-y-3">
+                          <Button
+                            variant={data.footageReady === 'ready' ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, footageReady: 'ready' })}
+                            className="w-full justify-start"
+                          >
+                            I have everything ready
+                          </Button>
+                          <Button
+                            variant={data.footageReady === 'need-help' ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, footageReady: 'need-help' })}
+                            className="w-full justify-start"
+                          >
+                            I need help creating content
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            id="captions"
+                            checked={data.needCaptions}
+                            onCheckedChange={(checked) => setData({ ...data, needCaptions: checked as boolean })}
+                          />
+                          <Label htmlFor="captions" className="cursor-pointer">
+                            Need captions/subtitles?
                           </Label>
                         </div>
-                      ))}
-                    </div>
-                    
-                    {data.videoTypes.includes('Other') && (
-                      <Input
-                        placeholder="Please specify..."
-                        value={data.customVideoType}
-                        onChange={(e) => setData({ ...data, customVideoType: e.target.value })}
-                        className="mt-3"
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                      Do you have footage/script ready?
-                    </Label>
-                    <div className="space-y-3">
-                      <Button
-                        variant={data.footageReady === 'ready' ? 'creative' : 'creative-outline'}
-                        onClick={() => setData({ ...data, footageReady: 'ready' })}
-                        className="w-full justify-start"
-                      >
-                        I have everything ready
-                      </Button>
-                      <Button
-                        variant={data.footageReady === 'need-help' ? 'creative' : 'creative-outline'}
-                        onClick={() => setData({ ...data, footageReady: 'need-help' })}
-                        className="w-full justify-start"
-                      >
-                        I need help creating content
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <Checkbox
-                        id="captions"
-                        checked={data.needCaptions}
-                        onCheckedChange={(checked) => setData({ ...data, needCaptions: checked as boolean })}
-                      />
-                      <Label htmlFor="captions" className="cursor-pointer">
-                        Need captions/subtitles?
-                      </Label>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3">
-                      <Checkbox
-                        id="stock"
-                        checked={data.needStock}
-                        onCheckedChange={(checked) => setData({ ...data, needStock: checked as boolean })}
-                      />
-                      <Label htmlFor="stock" className="cursor-pointer">
-                        Need stock footage or music?
-                      </Label>
+                        
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            id="stock"
+                            checked={data.needStock}
+                            onCheckedChange={(checked) => setData({ ...data, needStock: checked as boolean })}
+                          />
+                          <Label htmlFor="stock" className="cursor-pointer">
+                            Need stock footage or music?
+                          </Label>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6">
                 <Button 
@@ -802,6 +798,7 @@ const PricingCalculator: React.FC = () => {
               </div>
             </div>
           )}
+
 
           {currentStep === 3 && (
             <div className="space-y-8 animate-slide-in">

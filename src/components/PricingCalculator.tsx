@@ -19,15 +19,13 @@ interface PricingData {
   otherDesignType: string; // For manual quote (not included in calc)
   bilingual: boolean; // Arabic & English surcharge
   
-  // Video Editing Data
-  videoCount: string;
-  videoDuration: string;
-  videoTypes: string[];
-  customVideoType: string;
-  editingQuality: string;
-  footageReady: string;
-  needCaptions: boolean;
-  needStock: boolean;
+  // Video Editing Data (new)
+  videoBasic: string; // Basic Reels
+  videoMid: string; // Mid-Level Reels
+  videoAdvanced: string; // Advanced Motion Graphics Reels
+  videoSubtitles: boolean; // Subtitles on videos
+  videoNeedsStock: boolean; // Premium stock footage/music
+  videoNeedsScripting: boolean; // Concept/scripting/planning support
   
   // Lead Data
   name: string;
@@ -62,14 +60,12 @@ const PricingCalculator: React.FC = () => {
     packaging: '0',
     otherDesignType: '',
     bilingual: false,
-    videoCount: '',
-    videoDuration: '',
-    videoTypes: [],
-    customVideoType: '',
-    editingQuality: '',
-    footageReady: '',
-    needCaptions: false,
-    needStock: false,
+    videoBasic: '0',
+    videoMid: '0',
+    videoAdvanced: '0',
+    videoSubtitles: false,
+    videoNeedsStock: false,
+    videoNeedsScripting: false,
     name: '',
     company: '',
     email: '',
@@ -87,13 +83,7 @@ const PricingCalculator: React.FC = () => {
 
   
 
-  const videoTypeOptions = [
-    'Reels / TikToks',
-    'YouTube Videos',
-    'Explainer Videos', 
-    'Ads',
-    'Other'
-  ];
+  // Video type options removed in favor of explicit video complexity inputs
 
   // Calculate hours needed based on explicit counts
   const calculateDesignHours = (): number => {
@@ -133,26 +123,37 @@ const PricingCalculator: React.FC = () => {
   };
 
   const computeVideoPricing = () => {
-    const videoCount = parseInt(data.videoCount.split('–')[1] || data.videoCount.replace('+', '') || '0');
-    let price = 699;
-    let hours = videoCount * 0.75; // Base estimate
+    const basic = Number(data.videoBasic || 0);
+    const mid = Number(data.videoMid || 0);
+    const adv = Number(data.videoAdvanced || 0);
 
-    if (videoCount > 10) {
-      price += Math.ceil((videoCount - 10) / 5) * 140;
+    const basePrice = 699;
+    const baseHours = 55;
+    const extraRate = 12;
+
+    let totalHours = basic * 2.5 + mid * 5 + adv * 11;
+
+    // Subtitles surcharge (10% of editing time) if enabled
+    if (data.videoSubtitles) {
+      totalHours *= 1.1;
     }
 
-    if (data.editingQuality === 'premium') {
-      price += 300;
-      hours *= 1.5; // Premium editing takes more time
+    // Pre-production/support time additions
+    const totalVideos = basic + mid + adv;
+    if (data.videoNeedsScripting) {
+      totalHours += totalVideos * 1; // +1 hr per video
+    }
+    if (data.videoNeedsStock) {
+      totalHours += totalVideos * 0.5; // +0.5 hr per video
     }
 
-    if (data.footageReady === 'need-help') {
-      price += 150;
+    let finalPrice = basePrice;
+    if (totalHours > baseHours) {
+      const extraHours = totalHours - baseHours;
+      finalPrice += extraHours * extraRate;
     }
-    if (data.needCaptions) price += 50;
-    if (data.needStock) price += 75;
 
-    return { price: Math.round(price), hours };
+    return { price: Math.round(finalPrice), hours: totalHours };
   };
 
   const calculatePricing = (): PricingResult => {
@@ -180,12 +181,13 @@ const PricingCalculator: React.FC = () => {
       result.monthlyPrice = v.price;
       result.estimatedHours = v.hours;
       result.includes.push('Video Editing Package');
-      if (data.editingQuality === 'premium') {
-        result.includes.push('Premium editing with motion graphics');
+      const totalVideos = Number(data.videoBasic || 0) + Number(data.videoMid || 0) + Number(data.videoAdvanced || 0);
+      if (totalVideos > 0) {
+        result.includes.push(`${totalVideos} videos/month (mix of basic, mid-level, advanced)`);
       }
-      if (data.footageReady === 'need-help') result.includes.push('Script & footage creation support');
-      if (data.needCaptions) result.includes.push('Professional captions/subtitles');
-      if (data.needStock) result.includes.push('Stock footage & music library');
+      if (data.videoSubtitles) result.includes.push('Subtitles included');
+      if (data.videoNeedsScripting) result.includes.push('Concept, scripting & planning support');
+      if (data.videoNeedsStock) result.includes.push('Premium stock footage/music licensing');
     } else if (data.serviceType === 'both') {
       const g = computeGraphicPricing();
       const v = computeVideoPricing();
@@ -196,10 +198,13 @@ const PricingCalculator: React.FC = () => {
       result.includes.push('Complete Creative Package: Design + Video');
       result.includes.push('Bundle discount applied (20%)');
       if (data.bilingual) result.includes.push('Arabic & English designs included');
-      if (data.editingQuality === 'premium') result.includes.push('Premium video editing with motion graphics');
-      if (data.footageReady === 'need-help') result.includes.push('Script & footage creation support');
-      if (data.needCaptions) result.includes.push('Professional captions/subtitles');
-      if (data.needStock) result.includes.push('Stock footage & music library');
+      const totalVideos = Number(data.videoBasic || 0) + Number(data.videoMid || 0) + Number(data.videoAdvanced || 0);
+      if (totalVideos > 0) {
+        result.includes.push(`${totalVideos} videos/month (mix of basic, mid-level, advanced)`);
+      }
+      if (data.videoSubtitles) result.includes.push('Subtitles included for videos');
+      if (data.videoNeedsScripting) result.includes.push('Concept, scripting & planning support');
+      if (data.videoNeedsStock) result.includes.push('Premium stock footage/music licensing');
     }
 
     return result;
@@ -211,13 +216,6 @@ const PricingCalculator: React.FC = () => {
   };
 
   
-
-  const handleVideoTypeToggle = (type: string) => {
-    const updatedTypes = data.videoTypes.includes(type)
-      ? data.videoTypes.filter(t => t !== type)
-      : [...data.videoTypes, type];
-    setData({ ...data, videoTypes: updatedTypes });
-  };
 
   const handleLeadCapture = (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,24 +237,16 @@ const PricingCalculator: React.FC = () => {
       return totalCount > 0 || (data.otherDesignType?.trim().length ?? 0) > 0;
     }
     if (data.serviceType === 'video') {
-      return (
-        !!data.videoCount &&
-        !!data.videoDuration &&
-        data.videoTypes.length > 0 &&
-        !!data.editingQuality &&
-        !!data.footageReady
-      );
+      const totalVideos =
+        Number(data.videoBasic || 0) + Number(data.videoMid || 0) + Number(data.videoAdvanced || 0);
+      return totalVideos > 0;
     }
     if (data.serviceType === 'both') {
       const { totalCount } = getGraphicTotals();
       const designRequirements = totalCount > 0 || (data.otherDesignType?.trim().length ?? 0) > 0;
-      const videoRequirements =
-        !!data.videoCount &&
-        !!data.videoDuration &&
-        data.videoTypes.length > 0 &&
-        !!data.editingQuality &&
-        !!data.footageReady;
-      return designRequirements && videoRequirements;
+      const totalVideos =
+        Number(data.videoBasic || 0) + Number(data.videoMid || 0) + Number(data.videoAdvanced || 0);
+      return designRequirements && totalVideos > 0;
     }
     return false;
   };
@@ -269,7 +259,8 @@ const PricingCalculator: React.FC = () => {
       Number(data.brochures || 0) +
       Number(data.illustrations || 0) +
       Number(data.packaging || 0);
-    const videoCount = parseInt(data.videoCount.split('–')[1] || data.videoCount.replace('+', '') || '0');
+    const videoCount =
+      Number(data.videoBasic || 0) + Number(data.videoMid || 0) + Number(data.videoAdvanced || 0);
     
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6">
@@ -612,144 +603,121 @@ const PricingCalculator: React.FC = () => {
 
                   <div className="grid lg:grid-cols-2 gap-8">
                     <div className="space-y-6">
-                      <div>
-                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                          How many videos do you need per month?
-                        </Label>
-                        <div className="grid grid-cols-2 gap-3">
-                          {['1–4', '5–8', '9–12', '13+'].map((option) => (
-                            <Button
-                              key={option}
-                              variant={data.videoCount === option ? 'creative' : 'creative-outline'}
-                              onClick={() => setData({ ...data, videoCount: option })}
-                              className="h-12"
-                            >
-                              {option}
-                            </Button>
-                          ))}
+                      <Label className="text-lg font-bold text-creative-dark-green mb-2 block">
+                        How many of each type of video do you need per month?
+                      </Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="font-semibold">Basic Reels</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={data.videoBasic}
+                            onChange={(e) => setData({ ...data, videoBasic: e.target.value })}
+                            className="mt-2 h-11"
+                          />
                         </div>
-                      </div>
 
-                      <div>
-                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                          Average video duration?
-                        </Label>
-                        <div className="space-y-3">
-                          {['< 60 sec', '1–3 mins', '3–5 mins', '5+ mins'].map((option) => (
-                            <Button
-                              key={option}
-                              variant={data.videoDuration === option ? 'creative' : 'creative-outline'}
-                              onClick={() => setData({ ...data, videoDuration: option })}
-                              className="w-full justify-start h-12"
-                            >
-                              {option}
-                            </Button>
-                          ))}
+                        <div>
+                          <Label className="font-semibold">Mid-Level Reels</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={data.videoMid}
+                            onChange={(e) => setData({ ...data, videoMid: e.target.value })}
+                            className="mt-2 h-11"
+                          />
                         </div>
-                      </div>
 
-                      <div>
-                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                          What editing quality do you expect?
-                        </Label>
-                        <div className="space-y-3">
-                          <Button
-                            variant={data.editingQuality === 'basic' ? 'creative' : 'creative-outline'}
-                            onClick={() => setData({ ...data, editingQuality: 'basic' })}
-                            className="w-full justify-start text-left h-auto p-4"
-                          >
-                            <div>
-                              <div className="font-semibold">Basic Editing</div>
-                              <div className="text-xs opacity-70">Subtitles, light cuts, minor effects</div>
-                            </div>
-                          </Button>
-                          <Button
-                            variant={data.editingQuality === 'premium' ? 'creative' : 'creative-outline'}
-                            onClick={() => setData({ ...data, editingQuality: 'premium' })}
-                            className="w-full justify-start text-left h-auto p-4"
-                          >
-                            <div>
-                              <div className="font-semibold">Premium Editing</div>
-                              <div className="text-xs opacity-70">Motion graphics, sound design, branded animations</div>
-                            </div>
-                          </Button>
+                        <div>
+                          <Label className="font-semibold">Advanced Motion Graphics Reels</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={data.videoAdvanced}
+                            onChange={(e) => setData({ ...data, videoAdvanced: e.target.value })}
+                            className="mt-2 h-11"
+                          />
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                       <div>
-                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                          What type of video content? (Select all that apply)
+                        <Label className="text-lg font-bold text-creative-dark-green mb-2 block">
+                          Do you need subtitles in your videos?
                         </Label>
-                        <div className="space-y-3">
-                          {videoTypeOptions.map((option) => (
-                            <div key={option} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50">
-                              <Checkbox
-                                id={option}
-                                checked={data.videoTypes.includes(option)}
-                                onCheckedChange={() => handleVideoTypeToggle(option)}
-                              />
-                              <Label htmlFor={option} className="flex-1 cursor-pointer font-medium">
-                                {option}
-                              </Label>
-                            </div>
-                          ))}
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button
+                            variant={data.videoSubtitles ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, videoSubtitles: true })}
+                            className="h-12"
+                          >
+                            Yes
+                          </Button>
+                          <Button
+                            variant={!data.videoSubtitles ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, videoSubtitles: false })}
+                            className="h-12"
+                          >
+                            No
+                          </Button>
                         </div>
-                        
-                        {data.videoTypes.includes('Other') && (
-                          <Input
-                            placeholder="Please specify..."
-                            value={data.customVideoType}
-                            onChange={(e) => setData({ ...data, customVideoType: e.target.value })}
-                            className="mt-3"
-                          />
-                        )}
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Selecting Yes adds a 10% time lift for subtitles.
+                        </div>
                       </div>
 
                       <div>
-                        <Label className="text-lg font-semibold text-creative-dark-green mb-4 block">
-                          Do you have footage/script ready?
+                        <Label className="text-lg font-bold text-creative-dark-green mb-2 block">
+                          Do you want us to use premium stock footage or music?
                         </Label>
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
                           <Button
-                            variant={data.footageReady === 'ready' ? 'creative' : 'creative-outline'}
-                            onClick={() => setData({ ...data, footageReady: 'ready' })}
-                            className="w-full justify-start"
+                            variant={data.videoNeedsStock ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, videoNeedsStock: true })}
+                            className="h-12"
                           >
-                            I have everything ready
+                            Yes
                           </Button>
                           <Button
-                            variant={data.footageReady === 'need-help' ? 'creative' : 'creative-outline'}
-                            onClick={() => setData({ ...data, footageReady: 'need-help' })}
-                            className="w-full justify-start"
+                            variant={!data.videoNeedsStock ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, videoNeedsStock: false })}
+                            className="h-12"
                           >
-                            I need help creating content
+                            No
                           </Button>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Selecting Yes adds 0.5 hours per video for licensing/curation.
                         </div>
                       </div>
 
-                      <div className="space-y-4">
-                        <div className="flex items-center space-x-3">
-                          <Checkbox
-                            id="captions"
-                            checked={data.needCaptions}
-                            onCheckedChange={(checked) => setData({ ...data, needCaptions: checked as boolean })}
-                          />
-                          <Label htmlFor="captions" className="cursor-pointer">
-                            Need captions/subtitles?
-                          </Label>
+                      <div>
+                        <Label className="text-lg font-bold text-creative-dark-green mb-2 block">
+                          Do you already have footage and a script ready?
+                        </Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button
+                            variant={!data.videoNeedsScripting ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, videoNeedsScripting: false })}
+                            className="h-12"
+                          >
+                            Yes, everything is ready
+                          </Button>
+                          <Button
+                            variant={data.videoNeedsScripting ? 'creative' : 'creative-outline'}
+                            onClick={() => setData({ ...data, videoNeedsScripting: true })}
+                            className="h-12"
+                          >
+                            No, I need help
+                          </Button>
                         </div>
-                        
-                        <div className="flex items-center space-x-3">
-                          <Checkbox
-                            id="stock"
-                            checked={data.needStock}
-                            onCheckedChange={(checked) => setData({ ...data, needStock: checked as boolean })}
-                          />
-                          <Label htmlFor="stock" className="cursor-pointer">
-                            Need stock footage or music?
-                          </Label>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Selecting No adds 1 hour per video for concept, scripting, and planning.
                         </div>
                       </div>
                     </div>

@@ -494,7 +494,7 @@ const PricingCalculator: React.FC = () => {
 
                   <div className="grid lg:grid-cols-2 gap-8">
                     <div className="space-y-6">
-                      <Label className="text-lg font-bold text-creative-dark-green block">
+                      <Label className="text-lg font-bold text-creative-dark-green mb-2 block">
                         How many of each type of creative do you need per month?
                       </Label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -508,7 +508,7 @@ const PricingCalculator: React.FC = () => {
                             onChange={(e) => setData({ ...data, smDesigns: e.target.value })}
                             className="mt-2 h-11"
                           />
-                          <p className="text-xs text-muted-foreground mt-1">× 1 hr each</p>
+                          
                         </div>
 
                         <div>
@@ -521,7 +521,7 @@ const PricingCalculator: React.FC = () => {
                             onChange={(e) => setData({ ...data, banners: e.target.value })}
                             className="mt-2 h-11"
                           />
-                          <p className="text-xs text-muted-foreground mt-1">× 1.5 hrs each</p>
+                          
                         </div>
 
                         <div>
@@ -534,7 +534,6 @@ const PricingCalculator: React.FC = () => {
                             onChange={(e) => setData({ ...data, brochures: e.target.value })}
                             className="mt-2 h-11"
                           />
-                          <p className="text-xs text-muted-foreground mt-1">× 5 hrs each</p>
                         </div>
 
                         <div>
@@ -547,7 +546,7 @@ const PricingCalculator: React.FC = () => {
                             onChange={(e) => setData({ ...data, illustrations: e.target.value })}
                             className="mt-2 h-11"
                           />
-                          <p className="text-xs text-muted-foreground mt-1">× 3 hrs each</p>
+                          
                         </div>
 
                         <div>
@@ -560,14 +559,14 @@ const PricingCalculator: React.FC = () => {
                             onChange={(e) => setData({ ...data, packaging: e.target.value })}
                             className="mt-2 h-11"
                           />
-                          <p className="text-xs text-muted-foreground mt-1">× 5 hrs each</p>
+                          
                         </div>
                       </div>
 
                       <div>
                         <Label className="text-lg font-bold text-creative-dark-green">Other Design Type</Label>
                         <Input
-                          placeholder="Describe other design needs (manual quote)"
+                          placeholder="Describe other design needs"
                           value={data.otherDesignType}
                           onChange={(e) => setData({ ...data, otherDesignType: e.target.value })}
                           className="mt-2 h-11"
@@ -576,7 +575,7 @@ const PricingCalculator: React.FC = () => {
                     </div>
 
                     <div className="space-y-6">
-                      <Label className="text-lg font-bold text-creative-dark-green block">
+                      <Label className="text-lg font-bold text-creative-dark-green mb-2 block">
                         Will any designs need to be in Arabic & English?
                       </Label>
                       <div className="grid grid-cols-2 gap-3">

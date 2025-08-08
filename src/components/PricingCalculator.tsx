@@ -10,11 +10,14 @@ import { useToast } from '@/hooks/use-toast';
 interface PricingData {
   serviceType: 'graphic' | 'video' | 'both' | '';
   
-  // Graphic Design Data
-  designPieces: string;
-  designTypes: string[];
-  customDesignType: string;
-  bilingual: boolean;
+  // Graphic Design Counts (as strings for inputs)
+  smDesigns: string; // Social Media Designs
+  banners: string; // Banners / Ad Posters
+  brochures: string; // Brochures (5 pages each)
+  illustrations: string; // Illustrations / Custom Graphics
+  packaging: string; // Packaging / Label Designs
+  otherDesignType: string; // For manual quote (not included in calc)
+  bilingual: boolean; // Arabic & English surcharge
   
   // Video Editing Data
   videoCount: string;
@@ -52,9 +55,12 @@ const PricingCalculator: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [data, setData] = useState<PricingData>({
     serviceType: '',
-    designPieces: '',
-    designTypes: [],
-    customDesignType: '',
+    smDesigns: '0',
+    banners: '0',
+    brochures: '0',
+    illustrations: '0',
+    packaging: '0',
+    otherDesignType: '',
     bilingual: false,
     videoCount: '',
     videoDuration: '',
@@ -79,14 +85,7 @@ const PricingCalculator: React.FC = () => {
     setProgress(baseProgress);
   }, [currentStep]);
 
-  const designTypeOptions = [
-    'Social Media Posts',
-    'Website Graphics', 
-    'Banners / Ads',
-    'Brochures / Company Profiles',
-    'Packaging / Labels',
-    'Other'
-  ];
+  
 
   const videoTypeOptions = [
     'Reels / TikToks',
@@ -96,35 +95,64 @@ const PricingCalculator: React.FC = () => {
     'Other'
   ];
 
-  // Calculate hours needed based on design requirements
+  // Calculate hours needed based on explicit counts
   const calculateDesignHours = (): number => {
-    const designCount = parseInt(data.designPieces.split('–')[1] || data.designPieces.replace('+', '') || '0');
-    let totalHours = 0;
+    const sm = Number(data.smDesigns || 0);
+    const banners = Number(data.banners || 0);
+    const brochures = Number(data.brochures || 0);
+    const illustrations = Number(data.illustrations || 0);
+    const packaging = Number(data.packaging || 0);
+    return sm * 1 + banners * 1.5 + brochures * 5 + illustrations * 3 + packaging * 5;
+  };
 
-    // Base calculation: 5 social media designs = 2.5 hours
-    const socialMediaDesigns = data.designTypes.includes('Social Media Posts') 
-      ? Math.min(designCount * 0.6, designCount * 0.8) // 60-80% are social media
-      : 0;
-    
-    totalHours += (socialMediaDesigns / 5) * 2.5;
+  const getGraphicTotals = () => {
+    const sm = Number(data.smDesigns || 0);
+    const banners = Number(data.banners || 0);
+    const brochures = Number(data.brochures || 0);
+    const illustrations = Number(data.illustrations || 0);
+    const packaging = Number(data.packaging || 0);
+    const totalCount = sm + banners + brochures + illustrations + packaging;
+    const totalHours = sm * 1 + banners * 1.5 + brochures * 5 + illustrations * 3 + packaging * 5;
+    return { sm, banners, brochures, illustrations, packaging, totalCount, totalHours };
+  };
 
-    // Brochures: 6-page design-heavy brochure = 4.5 hours each
-    if (data.designTypes.includes('Brochures / Company Profiles')) {
-      const brochureCount = Math.ceil(designCount * 0.15); // ~15% are brochures
-      totalHours += brochureCount * 4.5;
+  const computeGraphicPricing = () => {
+    const { totalHours } = getGraphicTotals();
+    const Base_Price = 499;
+    const Base_Hours = 55;
+    const Extra_Hourly_Rate = 9;
+    let finalPrice = Base_Price;
+    if (totalHours > Base_Hours) {
+      const extraHours = totalHours - Base_Hours;
+      finalPrice += extraHours * Extra_Hourly_Rate;
+    }
+    if (data.bilingual) {
+      finalPrice *= 1.1; // 10% surcharge for bilingual
+    }
+    return { price: Math.round(finalPrice), hours: totalHours };
+  };
+
+  const computeVideoPricing = () => {
+    const videoCount = parseInt(data.videoCount.split('–')[1] || data.videoCount.replace('+', '') || '0');
+    let price = 699;
+    let hours = videoCount * 0.75; // Base estimate
+
+    if (videoCount > 10) {
+      price += Math.ceil((videoCount - 10) / 5) * 140;
     }
 
-    // Creative tasks (Website Graphics, Packaging) take 2x time
-    const creativeTypes = ['Website Graphics', 'Packaging / Labels', 'Banners / Ads'];
-    const hasCreativeTasks = data.designTypes.some(type => creativeTypes.includes(type));
-    
-    if (hasCreativeTasks) {
-      const creativeCount = Math.ceil(designCount * 0.25); // ~25% are creative tasks
-      totalHours += (creativeCount / 5) * 2.5 * 2; // 2x time for creative tasks
+    if (data.editingQuality === 'premium') {
+      price += 300;
+      hours *= 1.5; // Premium editing takes more time
     }
 
-    // Minimum 2.5 hours/day (52.5 hours/month)
-    return Math.max(totalHours, 52.5);
+    if (data.footageReady === 'need-help') {
+      price += 150;
+    }
+    if (data.needCaptions) price += 50;
+    if (data.needStock) price += 75;
+
+    return { price: Math.round(price), hours };
   };
 
   const calculatePricing = (): PricingResult => {
@@ -141,136 +169,39 @@ const PricingCalculator: React.FC = () => {
       estimatedHours: 0
     };
 
-    if (data.serviceType === 'both') {
-      // Combined package - $959 base (20% discount applied)
-      result.breakdown.basePrice = 959;
-      result.includes.push('Complete Creative Package: Design + Video');
-      result.includes.push('Combined creative services');
-      
-      const designCount = parseInt(data.designPieces.split('–')[1] || data.designPieces.replace('+', '') || '0');
-      const videoCount = parseInt(data.videoCount.split('–')[1] || data.videoCount.replace('+', '') || '0');
-      
-      result.includes.push(`Up to ${Math.max(designCount, 25)} designs/month`);
-      result.includes.push(`Up to ${Math.max(videoCount, 8)} videos/month`);
-      
-      // Calculate estimated hours
-      result.estimatedHours = calculateDesignHours() + (videoCount * 0.5); // Basic video hours estimate
-      
-      // Volume adjustments for combined package
-      if (designCount > 25) {
-        const volumeIncrease = Math.ceil((designCount - 25) / 10) * 120;
-        result.breakdown.volumeAdjustment += volumeIncrease;
-      }
-      
-      if (videoCount > 8) {
-        const volumeIncrease = Math.ceil((videoCount - 8) / 4) * 160;
-        result.breakdown.volumeAdjustment += volumeIncrease;
-      }
-
-      // Premium features
-      if (data.editingQuality === 'premium') {
-        result.breakdown.complexityAdjustment += 320;
-        result.includes.push('Premium video editing with motion graphics');
-      }
-      
-      if (data.designTypes.includes('Brochures / Company Profiles')) {
-        result.breakdown.complexityAdjustment += 240;
-        result.includes.push('Complex brochures & company profiles');
-      }
-      
-      if (data.bilingual) {
-        result.breakdown.bilingualBonus += 80;
-        result.includes.push('Arabic & English content');
-      }
-      
-      if (data.footageReady === 'need-help') {
-        result.breakdown.addOns += 160;
-        result.includes.push('Script & footage creation support');
-      }
-      
-      if (data.needCaptions) {
-        result.breakdown.addOns += 40;
-        result.includes.push('Professional captions/subtitles');
-      }
-      
-      if (data.needStock) {
-        result.breakdown.addOns += 80;
-        result.includes.push('Stock footage & music library');
-      }
-      
-    } else if (data.serviceType === 'graphic') {
-      // Graphic Design Only - $499 base
-      result.breakdown.basePrice = 499;
+    if (data.serviceType === 'graphic') {
+      const g = computeGraphicPricing();
+      result.monthlyPrice = g.price;
+      result.estimatedHours = g.hours;
       result.includes.push('Graphic Design Package');
-      
-      const pieceCount = parseInt(data.designPieces.split('–')[1] || data.designPieces.replace('+', '') || '0');
-      result.estimatedHours = calculateDesignHours();
-      
-      result.includes.push(`Up to ${pieceCount} designs/month`);
-      result.includes.push(`${Math.ceil(result.estimatedHours / 21)} hours/day average`);
-      
-      if (pieceCount > 30) {
-        const volumeIncrease = Math.ceil((pieceCount - 30) / 10) * 100;
-        result.breakdown.volumeAdjustment += volumeIncrease;
-      }
-      
-      if (data.designTypes.includes('Brochures / Company Profiles')) {
-        result.breakdown.complexityAdjustment += 200;
-        result.includes.push('Complex brochures & company profiles');
-      }
-      
-      // Creative tasks adjustment
-      const creativeTypes = ['Website Graphics', 'Packaging / Labels'];
-      const hasCreativeTasks = data.designTypes.some(type => creativeTypes.includes(type));
-      if (hasCreativeTasks) {
-        result.breakdown.complexityAdjustment += 150;
-        result.includes.push('Creative & branding materials');
-      }
-      
-      if (data.bilingual) {
-        result.breakdown.bilingualBonus += 75;
-        result.includes.push('Arabic & English designs');
-      }
-      
+      if (data.bilingual) result.includes.push('Arabic & English designs');
     } else if (data.serviceType === 'video') {
-      // Video Editing Only - $699 base
-      result.breakdown.basePrice = 699;
+      const v = computeVideoPricing();
+      result.monthlyPrice = v.price;
+      result.estimatedHours = v.hours;
       result.includes.push('Video Editing Package');
-      
-      const videoCount = parseInt(data.videoCount.split('–')[1] || data.videoCount.replace('+', '') || '0');
-      result.estimatedHours = videoCount * 0.75; // Base estimate
-      
-      result.includes.push(`Up to ${videoCount} videos/month`);
-      result.includes.push(`${Math.ceil(result.estimatedHours / 21)} hours/day average`);
-      
-      if (videoCount > 10) {
-        const volumeIncrease = Math.ceil((videoCount - 10) / 5) * 140;
-        result.breakdown.volumeAdjustment += volumeIncrease;
-      }
-      
       if (data.editingQuality === 'premium') {
-        result.breakdown.complexityAdjustment += 300;
         result.includes.push('Premium editing with motion graphics');
-        result.estimatedHours *= 1.5; // Premium editing takes more time
       }
-      
-      if (data.footageReady === 'need-help') {
-        result.breakdown.addOns += 150;
-        result.includes.push('Script & footage creation support');
-      }
-      
-      if (data.needCaptions) {
-        result.breakdown.addOns += 50;
-        result.includes.push('Professional captions/subtitles');
-      }
-      
-      if (data.needStock) {
-        result.breakdown.addOns += 75;
-        result.includes.push('Stock footage & music library');
-      }
+      if (data.footageReady === 'need-help') result.includes.push('Script & footage creation support');
+      if (data.needCaptions) result.includes.push('Professional captions/subtitles');
+      if (data.needStock) result.includes.push('Stock footage & music library');
+    } else if (data.serviceType === 'both') {
+      const g = computeGraphicPricing();
+      const v = computeVideoPricing();
+      const subtotal = g.price + v.price;
+      const discount = Math.round(subtotal * 0.2); // Preserve 20% bundle savings
+      result.monthlyPrice = subtotal - discount;
+      result.estimatedHours = g.hours + v.hours;
+      result.includes.push('Complete Creative Package: Design + Video');
+      result.includes.push('Bundle discount applied (20%)');
+      if (data.bilingual) result.includes.push('Arabic & English designs included');
+      if (data.editingQuality === 'premium') result.includes.push('Premium video editing with motion graphics');
+      if (data.footageReady === 'need-help') result.includes.push('Script & footage creation support');
+      if (data.needCaptions) result.includes.push('Professional captions/subtitles');
+      if (data.needStock) result.includes.push('Stock footage & music library');
     }
 
-    result.monthlyPrice = Object.values(result.breakdown).reduce((sum, val) => sum + val, 0);
     return result;
   };
 
@@ -279,12 +210,7 @@ const PricingCalculator: React.FC = () => {
     setCurrentStep(2);
   };
 
-  const handleDesignTypeToggle = (type: string) => {
-    const updatedTypes = data.designTypes.includes(type)
-      ? data.designTypes.filter(t => t !== type)
-      : [...data.designTypes, type];
-    setData({ ...data, designTypes: updatedTypes });
-  };
+  
 
   const handleVideoTypeToggle = (type: string) => {
     const updatedTypes = data.videoTypes.includes(type)
@@ -309,14 +235,27 @@ const PricingCalculator: React.FC = () => {
 
   const canProceedToLead = () => {
     if (data.serviceType === 'graphic') {
-      return data.designPieces && data.designTypes.length > 0;
+      const { totalCount } = getGraphicTotals();
+      return totalCount > 0 || (data.otherDesignType?.trim().length ?? 0) > 0;
     }
     if (data.serviceType === 'video') {
-      return data.videoCount && data.videoDuration && data.videoTypes.length > 0 && data.editingQuality && data.footageReady;
+      return (
+        !!data.videoCount &&
+        !!data.videoDuration &&
+        data.videoTypes.length > 0 &&
+        !!data.editingQuality &&
+        !!data.footageReady
+      );
     }
     if (data.serviceType === 'both') {
-      const designRequirements = data.designPieces && data.designTypes.length > 0;
-      const videoRequirements = data.videoCount && data.videoDuration && data.videoTypes.length > 0 && data.editingQuality && data.footageReady;
+      const { totalCount } = getGraphicTotals();
+      const designRequirements = totalCount > 0 || (data.otherDesignType?.trim().length ?? 0) > 0;
+      const videoRequirements =
+        !!data.videoCount &&
+        !!data.videoDuration &&
+        data.videoTypes.length > 0 &&
+        !!data.editingQuality &&
+        !!data.footageReady;
       return designRequirements && videoRequirements;
     }
     return false;
@@ -324,7 +263,12 @@ const PricingCalculator: React.FC = () => {
 
   if (showResults) {
     const pricing = calculatePricing();
-    const designCount = parseInt(data.designPieces.split('–')[1] || data.designPieces.replace('+', '') || '0');
+    const designCount =
+      Number(data.smDesigns || 0) +
+      Number(data.banners || 0) +
+      Number(data.brochures || 0) +
+      Number(data.illustrations || 0) +
+      Number(data.packaging || 0);
     const videoCount = parseInt(data.videoCount.split('–')[1] || data.videoCount.replace('+', '') || '0');
     
     return (
@@ -550,72 +494,109 @@ const PricingCalculator: React.FC = () => {
 
                   <div className="grid lg:grid-cols-2 gap-8">
                     <div className="space-y-6">
-                      <div>
-                        <Label className="text-lg font-bold text-creative-dark-green mb-6 block">
-                          How many designs do you need per month?
-                        </Label>
-                        <div className="grid grid-cols-2 gap-4">
-                          {['5–10', '11–20', '21–30', '30+'].map((option) => (
-                            <Button
-                              key={option}
-                              variant={data.designPieces === option ? 'creative' : 'creative-outline'}
-                              onClick={() => setData({ ...data, designPieces: option })}
-                              className="justify-center h-14 text-base font-semibold"
-                            >
-                              {option}
-                            </Button>
-                          ))}
+                      <Label className="text-lg font-bold text-creative-dark-green block">
+                        How many of each type of creative do you need per month?
+                      </Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="font-semibold">Social Media Designs</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={data.smDesigns}
+                            onChange={(e) => setData({ ...data, smDesigns: e.target.value })}
+                            className="mt-2 h-11"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">× 1 hr each</p>
                         </div>
+
+                        <div>
+                          <Label className="font-semibold">Banners / Ad Posters</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={data.banners}
+                            onChange={(e) => setData({ ...data, banners: e.target.value })}
+                            className="mt-2 h-11"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">× 1.5 hrs each</p>
+                        </div>
+
+                        <div>
+                          <Label className="font-semibold">Brochures (5 pages each)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={data.brochures}
+                            onChange={(e) => setData({ ...data, brochures: e.target.value })}
+                            className="mt-2 h-11"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">× 5 hrs each</p>
+                        </div>
+
+                        <div>
+                          <Label className="font-semibold">Illustrations / Custom Graphics</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={data.illustrations}
+                            onChange={(e) => setData({ ...data, illustrations: e.target.value })}
+                            className="mt-2 h-11"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">× 3 hrs each</p>
+                        </div>
+
+                        <div>
+                          <Label className="font-semibold">Packaging / Label Designs</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={data.packaging}
+                            onChange={(e) => setData({ ...data, packaging: e.target.value })}
+                            className="mt-2 h-11"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">× 5 hrs each</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-lg font-bold text-creative-dark-green">Other Design Type</Label>
+                        <Input
+                          placeholder="Describe other design needs (manual quote)"
+                          value={data.otherDesignType}
+                          onChange={(e) => setData({ ...data, otherDesignType: e.target.value })}
+                          className="mt-2 h-11"
+                        />
                       </div>
                     </div>
 
-                    <div className="space-y-8">
-                      <div>
-                        <Label className="text-lg font-bold text-creative-dark-green mb-6 block">
-                          What types of designs do you need?
-                        </Label>
-                        <div className="space-y-4">
-                          {designTypeOptions.map((option) => (
-                            <label
-                              key={option}
-                              className="flex items-center space-x-4 cursor-pointer p-4 rounded-xl border-2 hover:border-creative-yellow hover:bg-creative-yellow/10 transition-all duration-200"
-                            >
-                              <Checkbox
-                                checked={data.designTypes.includes(option)}
-                                onCheckedChange={() => handleDesignTypeToggle(option)}
-                                className="w-5 h-5"
-                              />
-                              <span className="font-semibold">{option}</span>
-                            </label>
-                          ))}
-                        </div>
-                        
-                        {data.designTypes.includes('Other') && (
-                          <Input
-                            placeholder="Please specify..."
-                            value={data.customDesignType}
-                            onChange={(e) => setData({ ...data, customDesignType: e.target.value })}
-                            className="mt-4 h-12"
-                          />
-                        )}
+                    <div className="space-y-6">
+                      <Label className="text-lg font-bold text-creative-dark-green block">
+                        Will any designs need to be in Arabic & English?
+                      </Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button
+                          variant={data.bilingual ? 'creative' : 'creative-outline'}
+                          onClick={() => setData({ ...data, bilingual: true })}
+                          className="h-12"
+                        >
+                          Yes
+                        </Button>
+                        <Button
+                          variant={!data.bilingual ? 'creative' : 'creative-outline'}
+                          onClick={() => setData({ ...data, bilingual: false })}
+                          className="h-12"
+                        >
+                          No
+                        </Button>
                       </div>
-
-                      <div>
-                        <div className="flex items-center space-x-4 p-6 border-2 rounded-xl hover:border-creative-yellow hover:bg-creative-yellow/10 transition-all cursor-pointer">
-                          <Checkbox
-                            checked={data.bilingual}
-                            onCheckedChange={(checked) => setData({ ...data, bilingual: !!checked })}
-                            className="w-6 h-6"
-                          />
-                          <div>
-                            <Label className="font-bold text-lg text-creative-dark-green cursor-pointer">
-                              Need Arabic & English versions?
-                            </Label>
-                            <p className="text-muted-foreground">
-                              Bilingual content for wider market reach
-                            </p>
-                          </div>
-                        </div>
+                      <div className="text-xs text-muted-foreground">
+                        Selecting Yes adds a 10% bilingual surcharge.
                       </div>
                     </div>
                   </div>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowRight, ArrowLeft, Palette, Video, CheckCircle, Star, Phone, Award, Target, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -133,10 +134,7 @@ const PricingCalculator: React.FC = () => {
 
     let totalHours = basic * 2.5 + mid * 5 + adv * 11;
 
-    // Subtitles surcharge (10% of editing time) if enabled
-    if (data.videoSubtitles) {
-      totalHours *= 1.1;
-    }
+    // Subtitles are included in basic editing; no time change
 
     // Pre-production/support time additions
     const totalVideos = basic + mid + adv;
@@ -608,7 +606,22 @@ const PricingCalculator: React.FC = () => {
                       </Label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <Label className="font-semibold">Basic Reels</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="font-semibold">Basic Reels</Label>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="link" className="px-0">See example</Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Basic Reel Editing - Example</DialogTitle>
+                                  <DialogDescription>
+                                    Raw footage cleanup, captions, cut points, and light effects suitable for quick social posts.
+                                  </DialogDescription>
+                                </DialogHeader>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
                           <Input
                             type="number"
                             min={0}
@@ -620,7 +633,22 @@ const PricingCalculator: React.FC = () => {
                         </div>
 
                         <div>
-                          <Label className="font-semibold">Mid-Level Reels</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="font-semibold">Mid-Level Reels</Label>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="link" className="px-0">See example</Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Mid-Level Reel Editing - Example</DialogTitle>
+                                  <DialogDescription>
+                                    B-roll integration, branded motion, smoother transitions, and light sound design for polished content.
+                                  </DialogDescription>
+                                </DialogHeader>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
                           <Input
                             type="number"
                             min={0}
@@ -632,7 +660,22 @@ const PricingCalculator: React.FC = () => {
                         </div>
 
                         <div>
-                          <Label className="font-semibold">Advanced Motion Graphics Reels</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="font-semibold">Advanced Motion Graphics Reels</Label>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="link" className="px-0">See example</Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Advanced Motion Graphics - Example</DialogTitle>
+                                  <DialogDescription>
+                                    Custom motion graphics, premium animation, SFX, and layered timelines for high-end campaigns.
+                                  </DialogDescription>
+                                </DialogHeader>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
                           <Input
                             type="number"
                             min={0}
@@ -648,27 +691,9 @@ const PricingCalculator: React.FC = () => {
                     <div className="space-y-8">
                       <div>
                         <Label className="text-lg font-bold text-creative-dark-green mb-2 block">
-                          Do you need subtitles in your videos?
+                          Subtitles
                         </Label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <Button
-                            variant={data.videoSubtitles ? 'creative' : 'creative-outline'}
-                            onClick={() => setData({ ...data, videoSubtitles: true })}
-                            className="h-12"
-                          >
-                            Yes
-                          </Button>
-                          <Button
-                            variant={!data.videoSubtitles ? 'creative' : 'creative-outline'}
-                            onClick={() => setData({ ...data, videoSubtitles: false })}
-                            className="h-12"
-                          >
-                            No
-                          </Button>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Selecting Yes adds a 10% time lift for subtitles.
-                        </div>
+                        <div className="text-sm text-muted-foreground">Subtitles are included in all edits.</div>
                       </div>
 
                       <div>
@@ -691,9 +716,6 @@ const PricingCalculator: React.FC = () => {
                             No
                           </Button>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Selecting Yes adds 0.5 hours per video for licensing/curation.
-                        </div>
                       </div>
 
                       <div>
@@ -715,9 +737,6 @@ const PricingCalculator: React.FC = () => {
                           >
                             No, I need help
                           </Button>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Selecting No adds 1 hour per video for concept, scripting, and planning.
                         </div>
                       </div>
                     </div>

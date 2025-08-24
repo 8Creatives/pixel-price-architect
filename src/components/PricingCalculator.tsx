@@ -260,9 +260,24 @@ const PricingCalculator: React.FC = () => {
     const videoCount =
       Number(data.videoBasic || 0) + Number(data.videoMid || 0) + Number(data.videoAdvanced || 0);
     
+    // Calculate Full-Time Hiring Costs
+    const fullTimeDesignerCost = 8000; // $8k+/month for designer
+    const fullTimeEditorCost = 8000; // $8k+/month for video editor
+    let fullTimeCost = 0;
+    
+    if (data.serviceType === 'graphic') {
+      fullTimeCost = fullTimeDesignerCost;
+    } else if (data.serviceType === 'video') {
+      fullTimeCost = fullTimeEditorCost;
+    } else if (data.serviceType === 'both') {
+      fullTimeCost = fullTimeDesignerCost + fullTimeEditorCost;
+    }
+    
+    const savings = fullTimeCost - pricing.monthlyPrice;
+    
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6">
-        <Card className="w-full max-w-4xl animate-scale-in border border-gray-200 shadow-xl">
+        <Card className="w-full max-w-6xl animate-scale-in border border-gray-200 shadow-xl">
           <CardHeader className="text-center pb-8 bg-creative-dark-green text-white">
             {/* Company Logo */}
             <div className="mb-6">
@@ -272,10 +287,10 @@ const PricingCalculator: React.FC = () => {
             </div>
             
             <div className="bg-creative-yellow text-creative-dark-green px-6 py-2 rounded-full inline-block mb-4 font-bold">
-              ✨ Your Creative Requirements Assessment
+              💰 ROI & Savings Calculator
             </div>
             <CardTitle className="text-2xl sm:text-3xl font-bold mb-4">
-              {data.name}, Your Custom Plan Is Ready
+              {data.name}, See Your Massive Savings
             </CardTitle>
             <div className="text-creative-yellow text-lg font-semibold">
               Based on your needs: {designCount > 0 ? `${designCount} designs` : ''} 
@@ -285,14 +300,62 @@ const PricingCalculator: React.FC = () => {
           </CardHeader>
           
           <CardContent className="space-y-8 p-6 sm:p-8">
-            <div className="text-center bg-gradient-to-r from-creative-yellow/10 to-creative-green/10 p-6 sm:p-8 rounded-2xl">
-              <div className="text-4xl sm:text-6xl font-black text-creative-dark-green mb-2">
-                ${pricing.monthlyPrice.toLocaleString()}
-                <span className="text-lg sm:text-xl text-muted-foreground font-normal">/month</span>
+            {/* ROI Comparison Section */}
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Full-Time Hiring Cost */}
+              <div className="bg-red-50 border-2 border-red-200 p-6 rounded-2xl">
+                <div className="text-center">
+                  <h3 className="text-xl font-bold text-red-700 mb-4">Full-Time Hiring Cost</h3>
+                  <div className="text-4xl font-black text-red-600 mb-2">
+                    ${fullTimeCost.toLocaleString()}
+                    <span className="text-lg font-normal">/month</span>
+                  </div>
+                  <div className="space-y-2 text-sm text-red-600">
+                    {data.serviceType === 'graphic' && <div>• Designer salary: $8,000+</div>}
+                    {data.serviceType === 'video' && <div>• Video editor salary: $8,000+</div>}
+                    {data.serviceType === 'both' && (
+                      <>
+                        <div>• Designer salary: $8,000+</div>
+                        <div>• Video editor salary: $8,000+</div>
+                      </>
+                    )}
+                    <div>• Benefits & overhead: +30%</div>
+                    <div>• Training & onboarding time</div>
+                    <div>• Equipment & software costs</div>
+                  </div>
+                </div>
               </div>
-              <p className="text-lg font-semibold text-creative-dark-green">Your Monthly Investment</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Professional creative services at a fraction of hiring cost
+
+              {/* Our Service Cost */}
+              <div className="bg-creative-green/10 border-2 border-creative-green p-6 rounded-2xl">
+                <div className="text-center">
+                  <h3 className="text-xl font-bold text-creative-dark-green mb-4">With 8 Creatives</h3>
+                  <div className="text-4xl font-black text-creative-green mb-2">
+                    ${pricing.monthlyPrice.toLocaleString()}
+                    <span className="text-lg font-normal">/month</span>
+                  </div>
+                  <div className="space-y-2 text-sm text-creative-dark-green">
+                    <div>• Full creative team included</div>
+                    <div>• All software & tools provided</div>
+                    <div>• 24-48 hour turnaround</div>
+                    <div>• Unlimited revisions</div>
+                    <div>• No hiring or training needed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Savings Highlight */}
+            <div className="text-center bg-gradient-to-r from-creative-yellow/20 to-creative-green/20 p-8 rounded-2xl border-2 border-creative-yellow">
+              <h3 className="text-2xl font-bold text-creative-dark-green mb-4">Your Monthly Savings</h3>
+              <div className="text-5xl sm:text-7xl font-black text-creative-green mb-4">
+                ${savings.toLocaleString()}
+              </div>
+              <p className="text-lg font-semibold text-creative-dark-green mb-2">
+                That's {Math.round((savings / fullTimeCost) * 100)}% cost reduction!
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Annual savings: ${(savings * 12).toLocaleString()}
               </p>
             </div>
 
